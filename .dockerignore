@@ -1,0 +1,6 @@
+docker-compose.yml
+.dockerignore
+/docker/storage
+/docker/composer.dockerfile
+/docker/nginx.dockerfile
+/docker/php.dockerfile

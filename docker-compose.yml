@@ -1,0 +1,105 @@
+version: '3'
+
+networks:
+  application:
+
+services:
+  site:
+    build:
+      context: .
+      dockerfile: docker/nginx.dockerfile
+    container_name: nginx
+    ports:
+      - 80:80
+    volumes:
+      - ./:/var/www/html:delegated
+      - ./docker/storage/nginx/logs:/var/log/nginx:delegated
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:cached
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:cached
+    depends_on:
+      - php
+      - mysql
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: "10m"
+    networks:
+      - application
+
+  mysql:
+    image: mysql:5.7.29
+    container_name: mysql
+    restart: always
+    ports:
+      - 3306:3306
+    env_file:
+      - .env-docker
+    volumes:
+      - ./docker/storage/mysql:/var/lib/mysql
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: "10m"
+    networks:
+      - application
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php.dockerfile
+    container_name: php
+    volumes:
+      - ./:/var/www/html:delegated
+      - ./docker/php/www.conf:/usr/local/etc/php-fpm.d/www.conf:cached
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: "10m"
+    networks:
+      - application
+
+  composer:
+    build:
+      context: .
+      dockerfile: docker/composer.dockerfile
+    container_name: composer
+    volumes:
+      - ./:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - php
+    user: laravel
+    entrypoint: ['composer', '--ignore-platform-reqs']
+    networks:
+      - application
+
+  npm:
+    image: node:13.7
+    container_name: npm
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - 3000:3000
+      - 3001:3001
+    working_dir: /var/www/html
+    entrypoint: ['npm']
+    networks:
+      - application
+
+  artisan:
+    build:
+      context: .
+      dockerfile: docker/php.dockerfile
+    container_name: artisan
+    volumes:
+      - ./:/var/www/html:delegated
+    depends_on:
+      - mysql
+    working_dir: /var/www/html
+    user: laravel
+    entrypoint: ['php', '/var/www/html/artisan']
+    networks:
+      - application
